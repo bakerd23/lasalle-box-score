@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Salle Men's Basketball Practice Box Score</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        .dark-mode {
+            background-color: #0a1628 !important;
+        }
+
+        .light-mode {
+            background-color: #f9fafb !important;
+        }
+
+        .table-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body class="light-mode">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useCallback, useEffect } = React;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCBVvuoOJ89OitlS1rhYAU_Z2JjQN3NqyI",
+            authDomain: "lasalle-hustle-chart.firebaseapp.com",
+            databaseURL: "https://lasalle-hustle-chart-default-rtdb.firebaseio.com",
+            projectId: "lasalle-hustle-chart",
+            storageBucket: "lasalle-hustle-chart.firebasestorage.app",
+            messagingSenderId: "141389844466",
+            appId: "1:141389844466:web:3f9f43c2c129242887256b"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const players = [
+            { number: 0, lastName: "Burton" },
+            { number: 2, lastName: "Dockery" },
+            { number: 3, lastName: "Smith" },
+            { number: 4, lastName: "Booker" },
+            { number: 5, lastName: "Finkley" },
+            { number: 7, lastName: "Collier" },
+            { number: 8, lastName: "Moss" },
+            { number: 10, lastName: "Johnson" },
+            { number: 11, lastName: "Zanki" },
+            { number: 12, lastName: "Nkoy-Eale" },
+            { number: 13, lastName: "Lipacis" },
+            { number: 14, lastName: "Rink" },
+            { number: 21, lastName: "Webb" },
+            { number: 23, lastName: "Mboudjika" },
+            { number: 24, lastName: "Brewer" },
+            { number: 25, lastName: "Beatty" },
+            { number: 28, lastName: "Masharaliyev" },
+            { number: 30, lastName: "Lynam" }
+        ];
+
+        // Raw counters stored per player; everything else (points, rebounds, %) is derived.
+        const rawStats = [
+            "Missed 2", "Made 2", "Missed 3", "Made 3",
+            "Offensive Rebound", "Assist", "Turnover", "Foul Drawn", "Charge",
+            "Defensive Rebound", "Foul Committed", "Steal", "Deflection", "Blocked Shot"
+        ];
+
+        const computeLine = (stats) => {
+            const made2 = stats["Made 2"] || 0;
+            const missed2 = stats["Missed 2"] || 0;
+            const made3 = stats["Made 3"] || 0;
+            const missed3 = stats["Missed 3"] || 0;
+            const attempts2 = made2 + missed2;
+            const attempts3 = made3 + missed3;
+            const fgm = made2 + made3;
+            const fga = attempts2 + attempts3;
+            const oreb = stats["Offensive Rebound"] || 0;
+            const dreb = stats["Defensive Rebound"] || 0;
+
+            return {
+                made2, attempts2, made3, attempts3, fgm, fga,
+                points: made2 * 2 + made3 * 3,
+                fg2pct: attempts2 > 0 ? (made2 / attempts2) * 100 : null,
+                fg3pct: attempts3 > 0 ? (made3 / attempts3) * 100 : null,
+                fgpct: fga > 0 ? (fgm / fga) * 100 : null,
+                oreb, dreb, reb: oreb + dreb,
+                ast: stats["Assist"] || 0,
+                stl: stats["Steal"] || 0,
+                blk: stats["Blocked Shot"] || 0,
+                to: stats["Turnover"] || 0,
+                fd: stats["Foul Drawn"] || 0,
+                pf: stats["Foul Committed"] || 0,
+                chg: stats["Charge"] || 0,
+                defl: stats["Deflection"] || 0
+            };
+        };
+
+        const fmtPct = (pct) => pct === null ? '—' : `${pct.toFixed(1)}%`;
+        const fmtMA = (m, a) => `${m}-${a}`;
+
+        // Columns rendered in the table, in order. `sort` is the numeric key used when this column header is clicked.
+        const columns = [
+            { key: 'points', label: 'PTS', sort: 'points' },
+            { key: 'fg2', label: '2PT', render: (l) => fmtMA(l.made2, l.attempts2), sort: 'made2' },
+            { key: 'fg2pct', label: '2P%', render: (l) => fmtPct(l.fg2pct), sort: 'fg2pct' },
+            { key: 'fg3', label: '3PT', render: (l) => fmtMA(l.made3, l.attempts3), sort: 'made3' },
+            { key: 'fg3pct', label: '3P%', render: (l) => fmtPct(l.fg3pct), sort: 'fg3pct' },
+            { key: 'fgpct', label: 'FG%', render: (l) => fmtPct(l.fgpct), sort: 'fgpct' },
+            { key: 'oreb', label: 'OREB', sort: 'oreb' },
+            { key: 'dreb', label: 'DREB', sort: 'dreb' },
+            { key: 'reb', label: 'REB', sort: 'reb' },
+            { key: 'ast', label: 'AST', sort: 'ast' },
+            { key: 'stl', label: 'STL', sort: 'stl' },
+            { key: 'blk', label: 'BLK', sort: 'blk' },
+            { key: 'to', label: 'TO', sort: 'to' },
+            { key: 'fd', label: 'FD', sort: 'fd' },
+            { key: 'pf', label: 'PF', sort: 'pf' },
+            { key: 'chg', label: 'CHG', sort: 'chg' },
+            { key: 'defl', label: 'DEFL', sort: 'defl' }
+        ];
+
+        const PracticeBoxScore = () => {
+            const [darkMode, setDarkMode] = useState(false);
+            const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+            const [practicesList, setPracticesList] = useState([]);
+            const [practiceData, setPracticeData] = useState(null);
+            const [sortColumn, setSortColumn] = useState('points');
+            const [loading, setLoading] = useState(true);
+            const [autoRefresh, setAutoRefresh] = useState(false);
+            const [lastUpdated, setLastUpdated] = useState(null);
+
+            useEffect(() => {
+                document.body.className = darkMode ? 'dark-mode' : 'light-mode';
+            }, [darkMode]);
+
+            const loadPracticesList = useCallback(async () => {
+                try {
+                    const snapshot = await db.collection('practiceSummaries').orderBy('practiceDate', 'desc').get();
+                    setPracticesList(snapshot.docs.map(doc => doc.id));
+                } catch (error) {
+                    console.error('Error loading practices list:', error);
+                }
+            }, []);
+
+            const loadPracticeData = useCallback(async () => {
+                try {
+                    const practiceDoc = db.collection('practiceSummaries').doc(selectedDate);
+                    const practiceSnapshot = await practiceDoc.get();
+
+                    if (!practiceSnapshot.exists) {
+                        setPracticeData(null);
+                        setLastUpdated(new Date().toLocaleString());
+                        setLoading(false);
+                        return;
+                    }
+
+                    const data = practiceSnapshot.data();
+
+                    const processed = players.map(player => {
+                        const stats = data.playerStats?.[`player_${player.number}`] || {};
+                        return { number: player.number, lastName: player.lastName, ...computeLine(stats) };
+                    });
+
+                    setPracticeData(processed);
+                    setLastUpdated(new Date().toLocaleString());
+                } catch (error) {
+                    console.error('Error loading practice data:', error);
+                } finally {
+                    setLoading(false);
+                }
+            }, [selectedDate]);
+
+            useEffect(() => {
+                loadPracticesList();
+            }, [loadPracticesList]);
+
+            useEffect(() => {
+                loadPracticeData();
+            }, [loadPracticeData]);
+
+            useEffect(() => {
+                if (!autoRefresh) return;
+                const interval = setInterval(loadPracticeData, 5000);
+                return () => clearInterval(interval);
+            }, [autoRefresh, loadPracticeData]);
+
+            const sortedPlayers = practiceData ? [...practiceData].sort((a, b) => {
+                if (sortColumn === 'name') return a.lastName.localeCompare(b.lastName);
+                return (b[sortColumn] ?? -Infinity) - (a[sortColumn] ?? -Infinity);
+            }) : [];
+
+            const headerBar = (
+                <div className={`rounded-lg shadow-md p-4 mb-6 border-t-4 border-amber-500 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-blue-900'}`}>La Salle Men's Basketball - Practice Box Score</h1>
+                        <div className="flex flex-wrap items-center gap-4">
+                            <button
+                                onClick={() => setDarkMode(prev => !prev)}
+                                className={`px-3 py-2 rounded-md transition-colors ${darkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
+                            >{darkMode ? '☀️ Light' : '🌙 Dark'}</button>
+                            {practicesList.length > 0 && (
+                                <select
+                                    value={selectedDate}
+                                    onChange={(e) => setSelectedDate(e.target.value)}
+                                    className={`px-3 py-2 border rounded-md ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                                >
+                                    {practicesList.map(date => (
+                                        <option key={date} value={date}>{date}</option>
+                                    ))}
+                                </select>
+                            )}
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 ${darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+                            />
+                            <button
+                                onClick={() => setAutoRefresh(prev => !prev)}
+                                className={`px-3 py-2 rounded-md transition-colors flex items-center gap-2 ${autoRefresh ? 'bg-green-600 hover:bg-green-700' : darkMode ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-400 hover:bg-gray-500'} text-white`}
+                            >{autoRefresh ? '⏸️ Live: ON' : '▶️ Live: OFF'}</button>
+                            <button
+                                onClick={loadPracticeData}
+                                className={`px-4 py-2 rounded-md transition-colors ${darkMode ? 'bg-blue-800 hover:bg-blue-900' : 'bg-blue-700 hover:bg-blue-800'} text-white`}
+                            >🔄 Refresh</button>
+                            {lastUpdated && (
+                                <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    <div>Last updated:</div>
+                                    <div className="font-medium">{lastUpdated}</div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            if (loading) {
+                return (
+                    <div className="max-w-7xl mx-auto p-4">
+                        <div className="animate-pulse space-y-4">
+                            <div className="h-8 bg-gray-300 rounded w-1/3"></div>
+                            <div className="h-64 bg-gray-300 rounded"></div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="max-w-7xl mx-auto p-4">
+                    {headerBar}
+
+                    {!practiceData ? (
+                        <div className={`rounded-lg shadow-lg p-16 text-center ${darkMode ? 'bg-gray-800 text-gray-400' : 'bg-white text-gray-500'}`}>
+                            No box score data for {selectedDate}
+                        </div>
+                    ) : (
+                        <div className={`rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                            <div className="p-4 border-b">
+                                <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Box Score</h2>
+                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{selectedDate}</p>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm border-collapse">
+                                    <thead className={`table-header ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                                        <tr>
+                                            <th
+                                                className={`px-2 py-2 text-left cursor-pointer hover:bg-gray-600 border ${darkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-700'} w-32`}
+                                                onClick={() => setSortColumn('name')}
+                                            >Player</th>
+                                            {columns.map(col => (
+                                                <th
+                                                    key={col.key}
+                                                    className={`px-1 py-2 text-center cursor-pointer hover:bg-gray-600 min-w-12 border ${darkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-700'} ${sortColumn === col.sort ? 'bg-blue-800 text-white' : ''}`}
+                                                    onClick={() => setSortColumn(col.sort)}
+                                                >{col.label}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {sortedPlayers.map(player => (
+                                            <tr key={player.number} className={`border-b ${darkMode ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                                <td className={`px-2 py-2 font-medium border ${darkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-700'}`}>
+                                                    #{player.number} {player.lastName}
+                                                </td>
+                                                {columns.map(col => (
+                                                    <td key={col.key} className={`px-1 py-2 text-center border ${darkMode ? 'border-gray-600 text-gray-300' : 'border-gray-300 text-gray-700'} ${col.key === 'points' ? 'font-bold' : ''}`}>
+                                                        {col.render ? col.render(player) : player[col.key]}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<PracticeBoxScore />, document.getElementById('root'));
+    </script>
+</body>
+</html>
