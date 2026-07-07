@@ -85,9 +85,9 @@
 
         // Raw counters stored per player; everything else (points, rebounds, %) is derived.
         const rawStats = [
-            "Missed 2", "Made 2", "Missed 3", "Made 3",
-            "Offensive Rebound", "Assist", "Turnover", "Foul Drawn", "Charge",
-            "Defensive Rebound", "Foul Committed", "Steal", "Deflection", "Blocked Shot"
+            "Missed 2", "Made 2", "Missed 3", "Made 3", "Missed FT", "Made FT",
+            "Offensive Rebound", "Assist", "Turnover", "Foul Drawn", "Charge Drawn",
+            "Defensive Rebound", "Foul Committed", "Steal", "Blocked Shot"
         ];
 
         const computeLine = (stats) => {
@@ -95,18 +95,22 @@
             const missed2 = stats["Missed 2"] || 0;
             const made3 = stats["Made 3"] || 0;
             const missed3 = stats["Missed 3"] || 0;
+            const madeFT = stats["Made FT"] || 0;
+            const missedFT = stats["Missed FT"] || 0;
             const attempts2 = made2 + missed2;
             const attempts3 = made3 + missed3;
+            const attemptsFT = madeFT + missedFT;
             const fgm = made2 + made3;
             const fga = attempts2 + attempts3;
             const oreb = stats["Offensive Rebound"] || 0;
             const dreb = stats["Defensive Rebound"] || 0;
 
             return {
-                made2, attempts2, made3, attempts3, fgm, fga,
-                points: made2 * 2 + made3 * 3,
+                made2, attempts2, made3, attempts3, madeFT, attemptsFT, fgm, fga,
+                points: made2 * 2 + made3 * 3 + madeFT,
                 fg2pct: attempts2 > 0 ? (made2 / attempts2) * 100 : null,
                 fg3pct: attempts3 > 0 ? (made3 / attempts3) * 100 : null,
+                ftpct: attemptsFT > 0 ? (madeFT / attemptsFT) * 100 : null,
                 fgpct: fga > 0 ? (fgm / fga) * 100 : null,
                 oreb, dreb, reb: oreb + dreb,
                 ast: stats["Assist"] || 0,
@@ -115,8 +119,7 @@
                 to: stats["Turnover"] || 0,
                 fd: stats["Foul Drawn"] || 0,
                 pf: stats["Foul Committed"] || 0,
-                chg: stats["Charge"] || 0,
-                defl: stats["Deflection"] || 0
+                chg: stats["Charge Drawn"] || 0
             };
         };
 
@@ -130,6 +133,8 @@
             { key: 'fg2pct', label: '2P%', render: (l) => fmtPct(l.fg2pct), sort: 'fg2pct' },
             { key: 'fg3', label: '3PT', render: (l) => fmtMA(l.made3, l.attempts3), sort: 'made3' },
             { key: 'fg3pct', label: '3P%', render: (l) => fmtPct(l.fg3pct), sort: 'fg3pct' },
+            { key: 'ft', label: 'FT', render: (l) => fmtMA(l.madeFT, l.attemptsFT), sort: 'madeFT' },
+            { key: 'ftpct', label: 'FT%', render: (l) => fmtPct(l.ftpct), sort: 'ftpct' },
             { key: 'fgpct', label: 'FG%', render: (l) => fmtPct(l.fgpct), sort: 'fgpct' },
             { key: 'oreb', label: 'OREB', sort: 'oreb' },
             { key: 'dreb', label: 'DREB', sort: 'dreb' },
@@ -140,8 +145,7 @@
             { key: 'to', label: 'TO', sort: 'to' },
             { key: 'fd', label: 'FD', sort: 'fd' },
             { key: 'pf', label: 'PF', sort: 'pf' },
-            { key: 'chg', label: 'CHG', sort: 'chg' },
-            { key: 'defl', label: 'DEFL', sort: 'defl' }
+            { key: 'chg', label: 'CHG', sort: 'chg' }
         ];
 
         const PracticeBoxScore = () => {

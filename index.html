@@ -78,9 +78,9 @@
         ];
 
         const statCategories = {
-            "Shooting": ["Missed 2", "Made 2", "Missed 3", "Made 3"],
-            "Offense": ["Offensive Rebound", "Assist", "Turnover", "Foul Drawn", "Charge"],
-            "Defense": ["Defensive Rebound", "Foul Committed", "Steal", "Deflection", "Blocked Shot"]
+            "Shooting": ["Missed 2", "Made 2", "Missed 3", "Made 3", "Missed FT", "Made FT"],
+            "Offense": ["Offensive Rebound", "Assist", "Turnover", "Foul Drawn", "Charge Drawn"],
+            "Defense": ["Defensive Rebound", "Foul Committed", "Steal", "Blocked Shot"]
         };
 
         const categoryStyles = {
@@ -97,16 +97,20 @@
             const missed2 = stats["Missed 2"] || 0;
             const made3 = stats["Made 3"] || 0;
             const missed3 = stats["Missed 3"] || 0;
+            const madeFT = stats["Made FT"] || 0;
+            const missedFT = stats["Missed FT"] || 0;
             const attempts2 = made2 + missed2;
             const attempts3 = made3 + missed3;
+            const attemptsFT = madeFT + missedFT;
             const fgm = made2 + made3;
             const fga = attempts2 + attempts3;
             return {
-                points: made2 * 2 + made3 * 3,
+                points: made2 * 2 + made3 * 3 + madeFT,
                 fg2pct: attempts2 > 0 ? (made2 / attempts2) * 100 : null,
                 fg3pct: attempts3 > 0 ? (made3 / attempts3) * 100 : null,
+                ftpct: attemptsFT > 0 ? (madeFT / attemptsFT) * 100 : null,
                 fgpct: fga > 0 ? (fgm / fga) * 100 : null,
-                made2, attempts2, made3, attempts3, fgm, fga
+                made2, attempts2, made3, attempts3, madeFT, attemptsFT, fgm, fga
             };
         };
 
@@ -318,6 +322,7 @@
                                     {selectedLine.points} PTS &nbsp;|&nbsp;
                                     2P: {selectedLine.made2}-{selectedLine.attempts2} ({fmtPct(selectedLine.fg2pct)}) &nbsp;|&nbsp;
                                     3P: {selectedLine.made3}-{selectedLine.attempts3} ({fmtPct(selectedLine.fg3pct)}) &nbsp;|&nbsp;
+                                    FT: {selectedLine.madeFT}-{selectedLine.attemptsFT} ({fmtPct(selectedLine.ftpct)}) &nbsp;|&nbsp;
                                     FG: {selectedLine.fgm}-{selectedLine.fga} ({fmtPct(selectedLine.fgpct)})
                                 </div>
                             </div>
