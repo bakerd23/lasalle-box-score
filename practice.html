@@ -299,7 +299,7 @@
                                             {columns.map(col => (
                                                 <th
                                                     key={col.key}
-                                                    className={`px-1 py-2 text-center cursor-pointer hover:bg-gray-600 min-w-12 border ${darkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-700'} ${sortColumn === col.sort ? 'bg-blue-800 text-white' : ''}`}
+                                                    className={`px-1 py-2 text-center cursor-pointer hover:bg-gray-600 min-w-12 border ${darkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-700'} ${sortColumn === col.sort ? 'bg-blue-800 text-amber-400' : ''}`}
                                                     onClick={() => setSortColumn(col.sort)}
                                                 >{col.label}</th>
                                             ))}
