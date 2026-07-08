@@ -89,7 +89,7 @@
             "Defensive Rebound", "Foul Committed", "Steal", "Blocked Shot", "Charge Drawn"
         ];
 
-        const computeLine = (stats, gamesPlayed) => {
+        const computeLine = (stats) => {
             const made2 = stats["Made 2"] || 0;
             const missed2 = stats["Missed 2"] || 0;
             const made3 = stats["Made 3"] || 0;
@@ -108,7 +108,6 @@
             return {
                 made2, attempts2, made3, attempts3, madeFT, attemptsFT, fgm, fga,
                 points,
-                ppg: gamesPlayed > 0 ? points / gamesPlayed : 0,
                 fg2pct: attempts2 > 0 ? (made2 / attempts2) * 100 : null,
                 fg3pct: attempts3 > 0 ? (made3 / attempts3) * 100 : null,
                 ftpct: attemptsFT > 0 ? (madeFT / attemptsFT) * 100 : null,
@@ -128,9 +127,8 @@
         const fmtMA = (m, a) => `${m}-${a}`;
 
         const columns = [
-            { key: 'gp', label: 'GP', sort: 'gp' },
+            { key: 'prac', label: 'PRAC', sort: 'prac' },
             { key: 'points', label: 'PTS', sort: 'points' },
-            { key: 'ppg', label: 'PPG', render: (l) => l.ppg.toFixed(1), sort: 'ppg' },
             { key: 'fg2', label: '2PT', render: (l) => fmtMA(l.made2, l.attempts2), sort: 'made2' },
             { key: 'fg2pct', label: '2P%', render: (l) => fmtPct(l.fg2pct), sort: 'fg2pct' },
             { key: 'fg3', label: '3PT', render: (l) => fmtMA(l.made3, l.attempts3), sort: 'made3' },
@@ -173,24 +171,24 @@
                         return;
                     }
 
-                    const games = snapshot.docs.map(doc => doc.data());
+                    const practices = snapshot.docs.map(doc => doc.data());
 
                     const totals = {};
-                    const gamesPlayed = {};
+                    const practicesPlayed = {};
 
                     players.forEach(player => {
                         totals[player.number] = {};
                         rawStats.forEach(stat => { totals[player.number][stat] = 0; });
-                        gamesPlayed[player.number] = 0;
+                        practicesPlayed[player.number] = 0;
                     });
 
-                    games.forEach(game => {
-                        Object.entries(game.playerStats || {}).forEach(([playerKey, stats]) => {
+                    practices.forEach(practice => {
+                        Object.entries(practice.playerStats || {}).forEach(([playerKey, stats]) => {
                             const playerNumber = parseInt(playerKey.replace('player_', ''));
                             if (!totals[playerNumber]) return;
 
-                            const playedInGame = rawStats.some(stat => (stats[stat] || 0) > 0);
-                            if (playedInGame) gamesPlayed[playerNumber]++;
+                            const playedInPractice = rawStats.some(stat => (stats[stat] || 0) > 0);
+                            if (playedInPractice) practicesPlayed[playerNumber]++;
 
                             rawStats.forEach(stat => {
                                 totals[playerNumber][stat] += stats[stat] || 0;
@@ -201,8 +199,8 @@
                     const processed = players.map(player => ({
                         number: player.number,
                         lastName: player.lastName,
-                        gp: gamesPlayed[player.number],
-                        ...computeLine(totals[player.number], gamesPlayed[player.number])
+                        prac: practicesPlayed[player.number],
+                        ...computeLine(totals[player.number])
                     }));
 
                     setSeasonPlayers(processed);
