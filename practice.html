@@ -151,7 +151,6 @@
         const PracticeBoxScore = () => {
             const [darkMode, setDarkMode] = useState(false);
             const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-            const [practicesList, setPracticesList] = useState([]);
             const [practiceData, setPracticeData] = useState(null);
             const [sortColumn, setSortColumn] = useState('points');
             const [loading, setLoading] = useState(true);
@@ -161,15 +160,6 @@
             useEffect(() => {
                 document.body.className = darkMode ? 'dark-mode' : 'light-mode';
             }, [darkMode]);
-
-            const loadPracticesList = useCallback(async () => {
-                try {
-                    const snapshot = await db.collection('practiceSummaries').orderBy('practiceDate', 'desc').get();
-                    setPracticesList(snapshot.docs.map(doc => doc.id));
-                } catch (error) {
-                    console.error('Error loading practices list:', error);
-                }
-            }, []);
 
             const loadPracticeData = useCallback(async () => {
                 try {
@@ -200,10 +190,6 @@
             }, [selectedDate]);
 
             useEffect(() => {
-                loadPracticesList();
-            }, [loadPracticesList]);
-
-            useEffect(() => {
                 loadPracticeData();
             }, [loadPracticeData]);
 
@@ -220,45 +206,31 @@
 
             const headerBar = (
                 <div className={`rounded-lg shadow-md p-4 mb-6 border-t-4 border-amber-500 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                    <div className="flex flex-col gap-3">
-                        <div className="flex flex-wrap justify-between items-center gap-3">
-                            <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-blue-900'}`}>La Salle Men's Basketball - Practice Box Score</h1>
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-blue-900'}`}>La Salle Men's Basketball - Practice Box Score</h1>
+                        <div className="flex flex-wrap items-center gap-4">
                             <button
                                 onClick={() => setDarkMode(prev => !prev)}
                                 className={`px-3 py-2 rounded-md transition-colors ${darkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
                             >{darkMode ? '☀️ Light' : '🌙 Dark'}</button>
-                        </div>
-                        <div className="flex flex-wrap justify-between items-center gap-3">
-                            <div className="flex flex-wrap items-center gap-3">
-                                {practicesList.length > 0 && (
-                                    <select
-                                        value={selectedDate}
-                                        onChange={(e) => setSelectedDate(e.target.value)}
-                                        className={`px-3 py-2 border rounded-md ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                                    >
-                                        {practicesList.map(date => (
-                                            <option key={date} value={date}>{date}</option>
-                                        ))}
-                                    </select>
-                                )}
-                                <input
-                                    type="date"
-                                    value={selectedDate}
-                                    onChange={(e) => setSelectedDate(e.target.value)}
-                                    className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 ${darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'}`}
-                                />
-                                <button
-                                    onClick={() => setAutoRefresh(prev => !prev)}
-                                    className={`px-3 py-2 rounded-md transition-colors flex items-center gap-2 ${autoRefresh ? 'bg-green-600 hover:bg-green-700' : darkMode ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-400 hover:bg-gray-500'} text-white`}
-                                >{autoRefresh ? '⏸️ Live: ON' : '▶️ Live: OFF'}</button>
-                                <button
-                                    onClick={loadPracticeData}
-                                    className={`px-4 py-2 rounded-md transition-colors ${darkMode ? 'bg-blue-800 hover:bg-blue-900' : 'bg-blue-700 hover:bg-blue-800'} text-white`}
-                                >🔄 Refresh</button>
-                            </div>
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 ${darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+                            />
+                            <button
+                                onClick={() => setAutoRefresh(prev => !prev)}
+                                className={`px-3 py-2 rounded-md transition-colors flex items-center gap-2 ${autoRefresh ? 'bg-green-600 hover:bg-green-700' : darkMode ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-400 hover:bg-gray-500'} text-white`}
+                            >{autoRefresh ? 'Live: ON' : 'Live: OFF'}</button>
+                            <button
+                                onClick={loadPracticeData}
+                                className={`px-4 py-2 rounded-md transition-colors ${darkMode ? 'bg-blue-800 hover:bg-blue-900' : 'bg-blue-700 hover:bg-blue-800'} text-white`}
+                            >Refresh</button>
                             {lastUpdated && (
                                 <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                    Last updated: <span className="font-medium">{lastUpdated}</span>
+                                    <div>Last updated:</div>
+                                    <div className="font-medium">{lastUpdated}</div>
                                 </div>
                             )}
                         </div>
