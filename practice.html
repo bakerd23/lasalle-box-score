@@ -126,6 +126,28 @@
         const fmtPct = (pct) => pct === null ? '—' : `${pct.toFixed(1)}%`;
         const fmtMA = (m, a) => `${m}-${a}`;
 
+        // Sums the derived per-player lines into a team total row, recomputing percentages from summed makes/attempts.
+        const computeTotalRow = (lines) => {
+            const sum = (key) => lines.reduce((acc, l) => acc + (l[key] || 0), 0);
+            const made2 = sum('made2'), attempts2 = sum('attempts2');
+            const made3 = sum('made3'), attempts3 = sum('attempts3');
+            const madeFT = sum('madeFT'), attemptsFT = sum('attemptsFT');
+            const fgm = made2 + made3, fga = attempts2 + attempts3;
+            const oreb = sum('oreb'), dreb = sum('dreb');
+
+            return {
+                made2, attempts2, made3, attempts3, madeFT, attemptsFT, fgm, fga,
+                points: sum('points'),
+                fg2pct: attempts2 > 0 ? (made2 / attempts2) * 100 : null,
+                fg3pct: attempts3 > 0 ? (made3 / attempts3) * 100 : null,
+                ftpct: attemptsFT > 0 ? (madeFT / attemptsFT) * 100 : null,
+                fgpct: fga > 0 ? (fgm / fga) * 100 : null,
+                oreb, dreb, reb: oreb + dreb,
+                ast: sum('ast'), stl: sum('stl'), blk: sum('blk'), to: sum('to'),
+                fd: sum('fd'), pf: sum('pf'), chg: sum('chg')
+            };
+        };
+
         // Columns rendered in the table, in order. `sort` is the numeric key used when this column header is clicked.
         const columns = [
             { key: 'points', label: 'PTS', sort: 'points' },
@@ -203,6 +225,8 @@
                 if (sortColumn === 'name') return a.lastName.localeCompare(b.lastName);
                 return (b[sortColumn] ?? -Infinity) - (a[sortColumn] ?? -Infinity);
             }) : [];
+
+            const totalRow = practiceData ? computeTotalRow(practiceData) : null;
 
             const headerBar = (
                 <div className={`rounded-lg shadow-md p-4 mb-6 border-t-4 border-amber-500 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
@@ -294,6 +318,20 @@
                                             </tr>
                                         ))}
                                     </tbody>
+                                    {totalRow && (
+                                        <tfoot>
+                                            <tr className={`font-bold border-t-2 ${darkMode ? 'bg-gray-900 border-gray-600' : 'bg-gray-100 border-gray-400'}`}>
+                                                <td className={`px-2 py-2 border ${darkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-700'}`}>
+                                                    Total
+                                                </td>
+                                                {columns.map(col => (
+                                                    <td key={col.key} className={`px-1 py-2 text-center border ${darkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}>
+                                                        {col.render ? col.render(totalRow) : totalRow[col.key]}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        </tfoot>
+                                    )}
                                 </table>
                             </div>
                         </div>
